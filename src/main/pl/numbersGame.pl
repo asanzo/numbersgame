@@ -1,19 +1,19 @@
 :- module(numbersGame,
         [ winnerNumber/1,
           possible/1,
-          regular/3,
-          bien/3,
-          probabilidad/2,
-          probabilidad/3
+          fine/3,
+          perfect/3,
+          probability/2,
+          probability/3
         ]).
 
 :- use_module(accessories).
 
 %==================================================================
-% Datos
+% Data
 %==================================================================
 numberSize(4).
-% data(Number,Perfect Qty, Good Qty).
+% data(Number,Perfect Qty, Just-Fine Qty).
 /*data([1,2,3,4],0,2).
 data([7,8,9,0],0,1).
 data([5,3,2,9],1,0).
@@ -57,56 +57,57 @@ possible(N):-
 %=============
 
 validNumber(N):-
-           tamanioCorrecto(N),
-           cadaDigitoEsValido(N),
-           sinRepetidos(N).
+           rightSize(N),
+           eachDigitIsValid(N),
+           repeatedLess(N).
 
-tamanioCorrecto(N):- numberSize(S),length(N,S).
+rightSize(N):- numberSize(S),length(N,S).
 
-cadaDigitoEsValido([H]):- digito(H).
-cadaDigitoEsValido([H|T]):- digito(H), cadaDigitoEsValido(T).
+eachDigitIsValid([H]):- digit(H).
+eachDigitIsValid([H|T]):- digit(H), eachDigitIsValid(T).
 
-digito(D):- between(0,9,D).
-posicion(P):- numberSize(S), between(1,S,P).
+digit(D):- between(0,9,D).
+position(P):- numberSize(S), between(1,S,P).
 
-cantDigitos(CD):- count(digito,CD).
-
-data(N,CantAciertos):-
-              data(N,B,R),
-              CantAciertos is B + R.
+data(N,HitQty):-
+              data(N,Perfect,Fine),
+              HitQty is Perfect + Fine.
 
 %==================================================================
-% Puede ir un dígito en cierta posición
-% (Probabilidades)
+% A Digit Can Be Placed in a Position
+% (Probabilities)
 %==================================================================
 
-canBePlaced(Dig,Pos):- probabilidad(Dig,Pos,1).       %Si de alguna manera hay certeza, ese dígito va ahí.
+canBePlaced(Dig,Pos):- probability(Dig,Pos,1).       %If there is certainty, that's where the digit goes.
 canBePlaced(Dig,Pos):-
-                  not(probabilidad(Dig,Pos,1)),   %Si no hay certeza,
-                  not(probabilidad(Dig,Pos,0)).   %puede ir siempre y cuando no exista una chance de que dé 0.
+                  not(probability(Dig,Pos,1)),   % If there isn't certainty,
+                  not(probability(Dig,Pos,0)).   % it can be placed there provided that there is no way of getting 0 probability. 
+                                                 % (all probabilities are greater than 0)
                   
-%Si en cierto dato no hay dígitos bien, significa que los regulares que haya no van en esa posición.
-probabilidad(D,Pos,0):-
-                             data(N,0,_),
+% If no perfect digits whithin a data, just-fine digits DON'T go in those positions. 
+%(0 probability of being placed there)
+probability(D,Pos,0):-
+                             data(N,0,_),  % 0 perfect digits 
                              nth1(Pos,N,D).
 
-%Si en cierto dato no hay dígitos regulares, significa que la probabilidad individual de cada dígito es 0 para cualquier otra posición.
-probabilidad(D,Pos,0):-
-                             data(N,_,0),
-                             nth1(PosOriginal,N,D),
-                             posicion(Pos),
-                             Pos \= PosOriginal.
+% If there are just perfect digits whithin a data, the digits can only go in that position
+% That is to say, for every other position, each digit's probability will be 0.
+probability(D,Pos,0):-
+                             data(N,_,0), %  only perfect digits
+                             nth1(OriginalPos,N,D),
+                             position(Pos),
+                             Pos \= OriginalPos. % other position than the original
 
 %Hay ciertas probabilidades que son las mismas para un conjunto de números, sin saber en qué posición particular:
-probabilidad(D,Pos,Prob):-
-                          posicion(Pos),
-                          conjuntoConAciertos(Digitos,CantAciertos),
-                          member(D,Digitos),
-                          length(Digitos,Cant),
-                          Prob is CantAciertos / Cant.
+probability(D,Pos,Prob):-
+                          position(Pos),
+                          conjuntoConAciertos(Digits,HitQty),
+                          member(D,Digits),
+                          length(Digits,Cant),
+                          Prob is HitQty / Cant.
                           
 % La primera manera de saber un conjunto de números y cuántos de ellos van, es directa:
-conjuntoConAciertos(N,CantAciertos):-  data(N,CantAciertos).
+conjuntoConAciertos(N,HitQty):-  data(N,HitQty).
                              
 %Si de N1 a N2 se sacaron dígitos y hay N menos de puntaje, todos esos dígitos iban y los que se pusieron no.
 conjuntoConAciertos(DigQueVan,CantTodos):-
@@ -117,9 +118,9 @@ conjuntoConAciertos(DigQueNoVan,0):-
                        diferenciaDeDigitos(_,DigQueNoVan).
 
 diferenciaDeDigitos(DigQueVan,DigQueNo):-
-                             data(N1,CantAciertos1),
-                             data(N2,CantAciertos2),
-                             CantQueDifieren is CantAciertos1 - CantAciertos2,
+                             data(N1,HitQty1),
+                             data(N2,HitQty2),
+                             CantQueDifieren is HitQty1 - HitQty2,
                              findall(Dig,(member(Dig,N1),not(member(Dig,N2))),DigQueVan),
                              length(DigQueVan,CantQueDifieren),
                              findall(Dig,(member(Dig,N2),not(member(Dig,N1))),DigQueNo).
@@ -129,13 +130,13 @@ diferenciaDeDigitos(DigQueVan,DigQueNo):-
 % El caso más común es que si entre 1234 y 5678 hay 4 dígitos que van (AciertosQFaltan=0), los dos restantes (0 y 9) seguro no van.
 % Si con esos números van sólo 3 dígitos (AciertosQFaltan=1) de los dos restantes (0 y 9) va sólo 1.
 conjuntoConAciertos(Restantes,AciertosQFaltan):-
-                            data(N1,CantAciertos1),
-                            data(N2,CantAciertos2),
+                            data(N1,HitQty1),
+                            data(N2,HitQty2),
                             forall(member(M,N1),not(member(M,N2))),  %Todos los dígitos son distintos.
-                            CantAciertos is CantAciertos1 + CantAciertos2,
+                            HitQty is HitQty1 + HitQty2,
                             numberSize(NS),
-                            AciertosQFaltan is NS - CantAciertos,
-                            findall(R,(digito(R),not(member(R,N1)),not(member(R,N2))),Restantes).
+                            AciertosQFaltan is NS - HitQty,
+                            findall(R,(digit(R),not(member(R,N1)),not(member(R,N2))),Restantes).
 
 %=============
 % Descarte de Números Posibles
@@ -159,29 +160,29 @@ discarded(N):-
                data(NDato,_),not(respeta(N,NDato)).
 respeta(N,NDato):-
                 data(NDato,CantBien,CantReg),
-                count(regular(N,NDato),CantReg),
-                count(bien(N,NDato),CantBien).
+                count(fine(N,NDato),CantReg),
+                count(perfect(N,NDato),CantBien).
 
-regular(N,NDato,Digito):-
-                          nth1(Pos,N,Digito),
-                          nth1(PosDato,NDato,Digito),
+fine(N,NDato,Digit):-
+                          nth1(Pos,N,Digit),
+                          nth1(PosDato,NDato,Digit),
                           Pos \= PosDato.
-bien(N,NDato,Digito):-
-                      nth1(Pos,N,Digito),
-                      nth1(Pos,NDato,Digito).
+perfect(N,NDato,Digit):-
+                      nth1(Pos,N,Digit),
+                      nth1(Pos,NDato,Digit).
 
 %==================================================================
 % Elección del mejor posible
 %==================================================================
 masProbable(N):-
-                  maximum(probabilidad(_),PMax),
-                  probabilidad(N,PMax).
+                  maximum(probability(_),PMax),
+                  probability(N,PMax).
 
 %Supongo que la probabilidad de un número es la suma de las máximas probabilidades de sus dígitos en sus posiciones
-probabilidad(N,Prob):-
+probability(N,Prob):-
                             possible(N),
-                            findall(ProbDig, (nth1(Pos,N,Dig),mayorProbabilidad(Dig,Pos,ProbDig)), Ps),
+                            findall(DigProb, (nth1(Pos,N,Dig),greatestProbability(Dig,Pos,DigProb)), Ps),
                             sumlist(Ps,Prob).
 
-mayorProbabilidad(Dig,Pos,Prob):-
-                                 firstResult( maximum(probabilidad(Dig,Pos)), Prob ).
+greatestProbability(Dig,Pos,Prob):-
+                                 firstResult( maximum(probability(Dig,Pos)), Prob ).
