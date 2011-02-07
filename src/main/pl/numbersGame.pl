@@ -69,6 +69,7 @@ eachDigitIsValid([H|T]):- digit(H), eachDigitIsValid(T).
 digit(D):- between(0,9,D).
 position(P):- numberSize(S), between(1,S,P).
 
+% Total of Just Fine + Perfect hits.
 data(N,HitQty):-
               data(N,Perfect,Fine),
               HitQty is Perfect + Fine.
@@ -98,38 +99,33 @@ probability(D,Pos,0):-
                              position(Pos),
                              Pos \= OriginalPos. % other position than the original
 
-%Hay ciertas probabilidades que son las mismas para un conjunto de números, sin saber en qué posición particular:
+% For probabilities that don't depend on the position of te digits but
+% depend on the number of hits whithin a subset of digits:
+% (probability is the ratio of how many hits in the set length)
 probability(D,Pos,Prob):-
                           position(Pos),
-                          conjuntoConAciertos(Digits,HitQty),
+                          setWithHits(Digits,HitQty),
                           member(D,Digits),
-                          length(Digits,Cant),
-                          Prob is HitQty / Cant.
+                          length(Digits,Qty),
+                          Prob is HitQty / Qty.
                           
-% La primera manera de saber un conjunto de números y cuántos de ellos van, es directa:
-conjuntoConAciertos(N,HitQty):-  data(N,HitQty).
+% First set with hits: all digits in a data, with its total of Just-Fine & Perfect hits.
+setWithHits(N,HitQty):-  data(N,HitQty).
                              
-%Si de N1 a N2 se sacaron dígitos y hay N menos de puntaje, todos esos dígitos iban y los que se pusieron no.
-conjuntoConAciertos(DigQueVan,CantTodos):-
-                       diferenciaDeDigitos(DigQueVan,_),
-                       length(DigQueVan,CantTodos).
+% If From N1 to N2 a set of digits is replaced, and N1 differs from N2 in te same qty of hits, then
+% the set of digits taken out are all hits, and the set of replacement digits has no hits. 
+setWithHits(HitDigits,AllQty):-   % all are hits, so the Qty of hits is the length of the set.
+                       digitsReplaced(HitDigits,_),
+                       length(HitDigits,AllQty).
 
-conjuntoConAciertos(DigQueNoVan,0):-
-                       diferenciaDeDigitos(_,DigQueNoVan).
-
-diferenciaDeDigitos(DigQueVan,DigQueNo):-
-                             data(N1,HitQty1),
-                             data(N2,HitQty2),
-                             CantQueDifieren is HitQty1 - HitQty2,
-                             findall(Dig,(member(Dig,N1),not(member(Dig,N2))),DigQueVan),
-                             length(DigQueVan,CantQueDifieren),
-                             findall(Dig,(member(Dig,N2),not(member(Dig,N1))),DigQueNo).
+setWithHits(NoHitDigits,0):-  % 0 because none is a hit.
+                       digitsReplaced(_,NoHitDigits).
 
 %Si entre dos datos con dígitos distintos, suman tantos aciertos como CantidadDeDigitos - AciertosQFaltan,
 %esos que faltan se distribuyen entre los dígitos que no aparecen en ningun numero.
 % El caso más común es que si entre 1234 y 5678 hay 4 dígitos que van (AciertosQFaltan=0), los dos restantes (0 y 9) seguro no van.
 % Si con esos números van sólo 3 dígitos (AciertosQFaltan=1) de los dos restantes (0 y 9) va sólo 1.
-conjuntoConAciertos(Restantes,AciertosQFaltan):-
+setWithHits(Restantes,AciertosQFaltan):-
                             data(N1,HitQty1),
                             data(N2,HitQty2),
                             forall(member(M,N1),not(member(M,N2))),  %Todos los dígitos son distintos.
@@ -137,22 +133,20 @@ conjuntoConAciertos(Restantes,AciertosQFaltan):-
                             numberSize(NS),
                             AciertosQFaltan is NS - HitQty,
                             findall(R,(digit(R),not(member(R,N1)),not(member(R,N2))),Restantes).
+                            
+digitsReplaced(ReplacedDigits,ReplacementDigits):-
+                             data(N1,HitQty1),
+                             data(N2,HitQty2),
+                             HitDiference is HitQty1 - HitQty2,
+                             findall(Dig,(member(Dig,N1),not(member(Dig,N2))),ReplacedDigits),
+                             length(ReplacedDigits,HitDiference),
+                             findall(Dig,(member(Dig,N2),not(member(Dig,N1))),ReplacementDigits).
 
 %=============
 % Descarte de Números Posibles
 % el predicado descartado define si un conjunto de números probables separadamente
 % pueden formar parte del resultado en forma conjunta.
 %=============
-
-% Un número queda descartado si:
-% contiene los dígitos de un conjunto con aciertos,
-% y la cantidad de aciertos es inferior al tamaño del conjunto.
-% Es decir, si no todos los numeros del conjunto van, el numero se descarta.
-% descartado(N):-
-%                           conjuntoConAciertos(Digitos,CantAciertos),
-%                           contiene(N,Digitos),
-%                           length(Digitos,Cant),
-%                           CantAciertos < Cant.
 
 %Deben respetar todos los datos.
 %quedan descartados si no respetan alguno de los datos.
