@@ -1,8 +1,8 @@
 :- module(numbersGame,
         [ winnerNumber/1,
           possible/1,
-          fine/3,
-          perfect/3,
+          fineDigit/3,
+          perfectDigit/3,
           probability/2,
           probability/3
         ]).
@@ -70,9 +70,9 @@ digit(D):- between(0,9,D).
 position(P):- numberSize(S), between(1,S,P).
 
 % Total of Just Fine + Perfect hits.
-data(N,HitQty):-
+data(N,HowManyAreHits):-
               data(N,Perfect,Fine),
-              HitQty is Perfect + Fine.
+              HowManyAreHits is Perfect + Fine.
 
 %==================================================================
 % A Digit Can Be Placed in a Position
@@ -104,13 +104,13 @@ probability(D,Pos,0):-
 % (probability is the ratio of how many hits in the set length)
 probability(D,Pos,Prob):-
                           position(Pos),
-                          setWithHits(Digits,HitQty),
+                          setWithHits(Digits,HowManyAreHits),
                           member(D,Digits),
                           length(Digits,Qty),
-                          Prob is HitQty / Qty.
+                          Prob is HowManyAreHits / Qty.
                           
 % First set with hits: all digits in a data, with its total of Just-Fine & Perfect hits.
-setWithHits(N,HitQty):-  data(N,HitQty).
+setWithHits(N,HowManyAreHits):-  data(N,HowManyAreHits).
                              
 % If From N1 to N2 a set of digits is replaced, and N1 differs from N2 in te same qty of hits, then
 % the set of digits taken out are all hits, and the set of replacement digits has no hits. 
@@ -121,18 +121,21 @@ setWithHits(HitDigits,AllQty):-   % all are hits, so the Qty of hits is the leng
 setWithHits(NoHitDigits,0):-  % 0 because none is a hit.
                        digitsReplaced(_,NoHitDigits).
 
-%Si entre dos datos con dígitos distintos, suman tantos aciertos como CantidadDeDigitos - AciertosQFaltan,
-%esos que faltan se distribuyen entre los dígitos que no aparecen en ningun numero.
-% El caso más común es que si entre 1234 y 5678 hay 4 dígitos que van (AciertosQFaltan=0), los dos restantes (0 y 9) seguro no van.
-% Si con esos números van sólo 3 dígitos (AciertosQFaltan=1) de los dos restantes (0 y 9) va sólo 1.
-setWithHits(Restantes,AciertosQFaltan):-
+% Now we're contemplating "non-mentioned" digits: we're going to compare two 
+% data numbers and draw conclusions about the digits that don't appear in neither of them,
+% but just when those data numbers have completely different digits.
+% If that's the case, the sum of their hits + a MissingHitsQty is the length of a valid number, 
+% and the missing digits will have that MissingHitsQty.
+% A common case arises between 1234 and 5678: if there are 4 hits between them (MissingHitsQty=0), remaining digits (0 & 9) are not hits.
+% if there are 3 hits between them (MissingHitsQty=1) it means that one of the remaining digits (0 y 9) is a hit.
+setWithHits(RemainingDigits,MissingHitsQty):-
                             data(N1,HitQty1),
                             data(N2,HitQty2),
-                            forall(member(M,N1),not(member(M,N2))),  %Todos los dígitos son distintos.
-                            HitQty is HitQty1 + HitQty2,
-                            numberSize(NS),
-                            AciertosQFaltan is NS - HitQty,
-                            findall(R,(digit(R),not(member(R,N1)),not(member(R,N2))),Restantes).
+                            forall(member(M,N1),not(member(M,N2))),  %Every digit is different.
+                            HitSum is HitQty1 + HitQty2,
+                            numberSize(NumberSize),
+                            MissingHitsQty is NumberSize - HitSum,
+                            findall(R,(digit(R),not(member(R,N1)),not(member(R,N2))),RemainingDigits).
                             
 digitsReplaced(ReplacedDigits,ReplacementDigits):-
                              data(N1,HitQty1),
@@ -143,36 +146,36 @@ digitsReplaced(ReplacedDigits,ReplacementDigits):-
                              findall(Dig,(member(Dig,N2),not(member(Dig,N1))),ReplacementDigits).
 
 %=============
-% Descarte de Números Posibles
-% el predicado descartado define si un conjunto de números probables separadamente
-% pueden formar parte del resultado en forma conjunta.
+% Possible Number Discard
+% Until now we found separate digit probability.
+% This predicate discards a whole number, not individual digits.
 %=============
 
-%Deben respetar todos los datos.
-%quedan descartados si no respetan alguno de los datos.
+% Every data must be checked with the number.
+% The number is discarded if it doesn't respect one data number's Perfect and Fine quantities.
 discarded(N):-
-               data(NDato,_),not(respeta(N,NDato)).
-respeta(N,NDato):-
-                data(NDato,CantBien,CantReg),
-                count(fine(N,NDato),CantReg),
-                count(perfect(N,NDato),CantBien).
+               data(DataNumber,_),not(checks(N,DataNumber)).
+checks(N,DataNumber):-
+                data(DataNumber,PerfectQty,FineQty),
+                count(fineDigit(N,DataNumber),FineQty),
+                count(perfectDigit(N,DataNumber),PerfectQty).
 
-fine(N,NDato,Digit):-
+fineDigit(N,DataNumber,Digit):-
                           nth1(Pos,N,Digit),
-                          nth1(PosDato,NDato,Digit),
-                          Pos \= PosDato.
-perfect(N,NDato,Digit):-
+                          nth1(DataPos,DataNumber,Digit),
+                          Pos \= DataPos. % If it's fine, it MUST be in a different place.
+perfectDigit(N,DataNumber,Digit):-
                       nth1(Pos,N,Digit),
-                      nth1(Pos,NDato,Digit).
+                      nth1(Pos,DataNumber,Digit). % If it's perfect, it MUST be on the same place.
 
 %==================================================================
-% Elección del mejor posible
+% Best Possible Number - REVIEW
 %==================================================================
-masProbable(N):-
+bestPossibleNumber(N):-
                   maximum(probability(_),PMax),
                   probability(N,PMax).
 
-%Supongo que la probabilidad de un número es la suma de las máximas probabilidades de sus dígitos en sus posiciones
+% Suppose -wrongly: TODO- that the probability of a number is the sum of the max probability of each digit in its position.
 probability(N,Prob):-
                             possible(N),
                             findall(DigProb, (nth1(Pos,N,Dig),greatestProbability(Dig,Pos,DigProb)), Ps),
