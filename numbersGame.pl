@@ -1,4 +1,4 @@
-:- module(juegoNumeros,
+:- module(numbersGame,
         [ nroGanador/1,
           posible/1,
           regular/3,
@@ -7,7 +7,7 @@
           probabilidad/3
         ]).
 
-:- use_module(accesorios).
+:- use_module(accessories).
 
 %==================================================================
 % Datos

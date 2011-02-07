@@ -1,4 +1,4 @@
-:- module(accesorios,
+:- module(accessories,
         [ justOne/1,
           firstResult/2,
           count/2,
