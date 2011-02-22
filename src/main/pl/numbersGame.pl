@@ -49,11 +49,10 @@ winnerNumber(N):- justOne(possible), possible(N).
 
 possible(N):-
             validNumber(N),
-            forall(nth1(Pos,N,Dig),canBePlaced(Dig,Pos)),  % All digits canBePlaced in their position.
             not(discarded(N)).
 
 %=============
-% Auxiliares
+% Auxiliars
 %=============
 
 validNumber(N):-
@@ -73,88 +72,14 @@ position(P):- numberSize(S), between(1,S,P).
 data(N,HowManyAreHits):-
               data(N,Perfect,Fine),
               HowManyAreHits is Perfect + Fine.
-
-%==================================================================
-% A Digit Can Be Placed in a Position
-% (Probabilities)
-%==================================================================
-
-canBePlaced(Dig,Pos):- probability(Dig,Pos,1).       %If there is certainty, that's where the digit goes.
-canBePlaced(Dig,Pos):-
-                  not(probability(Dig,Pos,1)),   % If there isn't certainty,
-                  not(probability(Dig,Pos,0)).   % it can be placed there provided that there is no way of getting 0 probability. 
-                                                 % (all probabilities are greater than 0)
-                  
-% If no perfect digits whithin a data, just-fine digits DON'T go in those positions. 
-%(0 probability of being placed there)
-probability(D,Pos,0):-
-                             data(N,0,_),  % 0 perfect digits 
-                             nth1(Pos,N,D).
-
-% If there are just perfect digits whithin a data, the digits can only go in that position
-% That is to say, for every other position, each digit's probability will be 0.
-probability(D,Pos,0):-
-                             data(N,_,0), %  only perfect digits
-                             nth1(OriginalPos,N,D),
-                             position(Pos),
-                             Pos \= OriginalPos. % other position than the original
-
-% For probabilities that don't depend on the position of te digits but
-% depend on the number of hits whithin a subset of digits:
-% (probability is the ratio of how many hits in the set length)
-probability(D,Pos,Prob):-
-                          position(Pos),
-                          setWithHits(Digits,HowManyAreHits),
-                          member(D,Digits),
-                          length(Digits,Qty),
-                          Prob is HowManyAreHits / Qty.
-                          
-% First set with hits: all digits in a data, with its total of Just-Fine & Perfect hits.
-setWithHits(N,HowManyAreHits):-  data(N,HowManyAreHits).
-                             
-% If From N1 to N2 a set of digits is replaced, and N1 differs from N2 in te same qty of hits, then
-% the set of digits taken out are all hits, and the set of replacement digits has no hits. 
-setWithHits(HitDigits,AllQty):-   % all are hits, so the Qty of hits is the length of the set.
-                       digitsReplaced(HitDigits,_),
-                       length(HitDigits,AllQty).
-
-setWithHits(NoHitDigits,0):-  % 0 because none is a hit.
-                       digitsReplaced(_,NoHitDigits).
-
-% Now we're contemplating "non-mentioned" digits: we're going to compare two 
-% data numbers and draw conclusions about the digits that don't appear in neither of them,
-% but just when those data numbers have completely different digits.
-% If that's the case, the sum of their hits + a MissingHitsQty is the length of a valid number, 
-% and the missing digits will have that MissingHitsQty.
-% A common case arises between 1234 and 5678: if there are 4 hits between them (MissingHitsQty=0), remaining digits (0 & 9) are not hits.
-% if there are 3 hits between them (MissingHitsQty=1) it means that one of the remaining digits (0 y 9) is a hit.
-setWithHits(RemainingDigits,MissingHitsQty):-
-                            data(N1,HitQty1),
-                            data(N2,HitQty2),
-                            forall(member(M,N1),not(member(M,N2))),  %Every digit is different.
-                            HitSum is HitQty1 + HitQty2,
-                            numberSize(NumberSize),
-                            MissingHitsQty is NumberSize - HitSum,
-                            findall(R,(digit(R),not(member(R,N1)),not(member(R,N2))),RemainingDigits).
-                            
-digitsReplaced(ReplacedDigits,ReplacementDigits):-
-                             data(N1,HitQty1),
-                             data(N2,HitQty2),
-                             HitDiference is HitQty1 - HitQty2,
-                             findall(Dig,(member(Dig,N1),not(member(Dig,N2))),ReplacedDigits),
-                             length(ReplacedDigits,HitDiference),
-                             findall(Dig,(member(Dig,N2),not(member(Dig,N1))),ReplacementDigits).
-
 %=============
 % Possible Number Discard
-% Until now we found separate digit probability.
-% This predicate discards a whole number, not individual digits.
 %=============
 
 % Every data must be checked with the number.
 % The number is discarded if it doesn't respect one data number's Perfect and Fine quantities.
 discarded(N):-
-               data(DataNumber,_),not(checks(N,DataNumber)).
+               data(DataNumber,_,_),not(checks(N,DataNumber)).
 checks(N,DataNumber):-
                 data(DataNumber,PerfectQty,FineQty),
                 count(fineDigit(N,DataNumber),FineQty),
@@ -183,3 +108,67 @@ probability(N,Prob):-
 
 greatestProbability(Dig,Pos,Prob):-
                                  firstResult( maximum(probability(Dig,Pos)), Prob ).
+
+%==================================================================
+% Probabilities for each digit
+%==================================================================
+
+% If no perfect digits whithin a data, just-fine digits DON'T go in those positions.
+%(0 probability of being placed there)
+probability(D,Pos,0):-
+                             data(N,0,_),  % 0 perfect digits
+                             nth1(Pos,N,D).
+
+% If there are just perfect digits whithin a data, the digits can only go in that position
+% That is to say, for every other position, each digit's probability will be 0.
+probability(D,Pos,0):-
+                             data(N,_,0), %  only perfect digits
+                             nth1(OriginalPos,N,D),
+                             position(Pos),
+                             Pos \= OriginalPos. % other position than the original
+
+% For probabilities that don't depend on the position of te digits but
+% depend on the number of hits whithin a subset of digits:
+% (probability is the ratio of how many hits in the set length)
+probability(D,Pos,Prob):-
+                          position(Pos),
+                          setWithHits(Digits,HowManyAreHits),
+                          member(D,Digits),
+                          length(Digits,Qty),
+                          Prob is HowManyAreHits / Qty.
+
+% First set with hits: all digits in a data, with its total of Just-Fine & Perfect hits.
+setWithHits(N,HowManyAreHits):-  data(N,HowManyAreHits).
+
+% If From N1 to N2 a set of digits is replaced, and N1 differs from N2 in te same qty of hits, then
+% the set of digits taken out are all hits, and the set of replacement digits has no hits.
+setWithHits(HitDigits,AllQty):-   % all are hits, so the Qty of hits is the length of the set.
+                       digitsReplaced(HitDigits,_),
+                       length(HitDigits,AllQty).
+
+setWithHits(NoHitDigits,0):-  % 0 because none is a hit.
+                       digitsReplaced(_,NoHitDigits).
+
+% Now we're contemplating "non-mentioned" digits: we're going to compare two
+% data numbers and draw conclusions about the digits that don't appear in neither of them,
+% but just when those data numbers have completely different digits.
+% If that's the case, the sum of their hits + a MissingHitsQty is the length of a valid number,
+% and the missing digits will have that MissingHitsQty.
+% A common case arises between 1234 and 5678: if there are 4 hits between them (MissingHitsQty=0), remaining digits (0 & 9) are not hits.
+% if there are 3 hits between them (MissingHitsQty=1) it means that one of the remaining digits (0 y 9) is a hit.
+setWithHits(RemainingDigits,MissingHitsQty):-
+                            data(N1,HitQty1),
+                            data(N2,HitQty2),
+                            forall(member(M,N1),not(member(M,N2))),  %Every digit is different.
+                            HitSum is HitQty1 + HitQty2,
+                            numberSize(NumberSize),
+                            MissingHitsQty is NumberSize - HitSum,
+                            findall(R,(digit(R),not(member(R,N1)),not(member(R,N2))),RemainingDigits).
+
+digitsReplaced(ReplacedDigits,ReplacementDigits):-
+                             data(N1,HitQty1),
+                             data(N2,HitQty2),
+                             HitDiference is HitQty1 - HitQty2,
+                             findall(Dig,(member(Dig,N1),not(member(Dig,N2))),ReplacedDigits),
+                             length(ReplacedDigits,HitDiference),
+                             findall(Dig,(member(Dig,N2),not(member(Dig,N1))),ReplacementDigits).
