@@ -9,7 +9,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
-    - name: Get version
-      run: echo "::set-env name=VERSION::$(echo $GITHUB_REF | cut -d'/' -f 3)"
-    - name: Use version
-      run: echo The version is $VERSION
+    - name: Get tag name
+      run: |
+        TAGNAME=$(echo $GITHUB_REF | cut -d'/' -f 3)
+        echo The tag name is $TAGNAME
+        echo "::set-env name=TAGNAME::$TAGNAME"
+    - name: Use tag name
+      run: echo The version is $TAGNAME
