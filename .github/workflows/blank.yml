@@ -17,4 +17,4 @@ jobs:
         echo "::set-env name=TAGNAME::$TAGNAME"
         echo "::set-output name=tag::$TAGNAME"
     - name: Use tag name
-      run: echo The version is $TAGNAME $${{steps.tagName.outputs.tag}}
+      run: echo The version is $TAGNAME ${{steps.tagName.outputs.tag}}
