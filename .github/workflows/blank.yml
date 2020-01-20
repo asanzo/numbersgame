@@ -11,3 +11,7 @@ jobs:
     - uses: actions/checkout@v1
     - name: Test env variables
       run: echo $HOME $GITHUB_WORKFLOW $GITHUB_ACTION $GITHUB_ACTIONS $GITHUB_ACTOR $GITHUB_REPOSITORY $GITHUB_EVENT_NAME $GITHUB_EVENT_PATH $GITHUB_WORKSPACE $GITHUB_SHA $GITHUB_REF $GITHUB_HEAD_REF $GITHUB_BASE_REF
+    - name: Get version
+      run: VERSION=${echo $GITHUB_REF | cut -d'/' -f 3}
+    - name: Use version
+      run: echo The version is $VERSION
