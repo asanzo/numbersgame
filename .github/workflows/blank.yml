@@ -13,5 +13,7 @@ jobs:
       run: | 
         VERSION="echo $GITHUB_REF | cut -d'/' -f 3"
         VERSION=${VERSION}
+        echo $VERSION
+        echo "::set-env name=VERSION::$VERSION"
     - name: Use version
       run: echo The version is $VERSION
