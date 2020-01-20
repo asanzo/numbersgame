@@ -1,0 +1,14 @@
+name: Test release
+
+on:
+  release: [create]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Test env variables
+      run: echo $HOME $GITHUB_WORKFLOW $GITHUB_ACTION $GITHUB_ACTIONS $GITHUB_ACTOR $GITHUB_REPOSITORY $GITHUB_EVENT_NAME $GITHUB_EVENT_PATH $GITHUB_WORKSPACE $GITHUB_SHA $GITHUB_REF $GITHUB_HEAD_REF $GITHUB_BASE_REF
