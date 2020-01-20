@@ -10,9 +10,11 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Get tag name
+      id: tagName
       run: |
         TAGNAME=$(echo $GITHUB_REF | cut -d'/' -f 3)
         echo The tag name is $TAGNAME
         echo "::set-env name=TAGNAME::$TAGNAME"
+        echo "::set-output name=tag::$TAGNAME"
     - name: Use tag name
-      run: echo The version is $TAGNAME
+      run: echo The version is $TAGNAME $${{steps.tagName.outputs.tag}}
